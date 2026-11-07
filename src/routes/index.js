@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const rateLimit = require('express-rate-limit');
 const { isConnected } = require('../config/db');
+const { allowedOrigins } = require('../config/cors');
 const requireDb = require('../middleware/requireDb');
 const requireAdmin = require('../middleware/requireAdmin');
 const { listProjects, getProject } = require('../controllers/projectController');
@@ -21,7 +22,14 @@ const formLimiter = rateLimit({
 });
 
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', database: isConnected() ? 'connected' : 'offline', time: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    database: isConnected() ? 'connected' : 'offline',
+    // Origins are public information (they are the website's own URLs); shown here so a
+    // CLIENT_ORIGIN typo can be spotted without digging through Vercel settings.
+    allowedOrigins,
+    time: new Date().toISOString(),
+  });
 });
 
 router.get('/foundation', (req, res) => {
