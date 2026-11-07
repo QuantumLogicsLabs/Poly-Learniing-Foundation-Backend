@@ -15,13 +15,22 @@ if (process.env.VERCEL || process.env.TRUST_PROXY) app.set('trust proxy', Number
 
 // CLIENT_ORIGIN is a comma-separated list; "*" works as a wildcard,
 // e.g. "https://plf.vercel.app,https://plf-*-myteam.vercel.app" to also allow preview deployments.
-const allowed = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
-  .split(',')
-  .map((o) => o.trim().replace(/\/$/, ''))
-  .filter(Boolean)
-  .map((o) => new RegExp('^' + o.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*') + '$'));
+// Forgiving on purpose: surrounding quotes, spaces, trailing slashes and a missing "https://"
+// (all easy to paste into the Vercel dashboard by accident) are ignored.
+function parseOrigins(value) {
+  return (value || 'http://localhost:5173')
+    .replace(/^\s*["']|["']\s*$/g, '')
+    .split(',')
+    .map((o) => o.trim().replace(/^["']+|["']+$/g, '').replace(/\/+$/, ''))
+    .filter(Boolean)
+    .map((o) => (/^https?:\/\//i.test(o) ? o : `https://${o}`))
+    .map((o) => new RegExp('^' + o.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*') + '$', 'i'));
+}
+const allowed = parseOrigins(process.env.CLIENT_ORIGIN);
 
-app.use(helmet());
+// The API is consumed from a different origin (the frontend's own Vercel project),
+// so its responses must be readable cross-origin.
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(
   cors({
     origin(origin, done) {

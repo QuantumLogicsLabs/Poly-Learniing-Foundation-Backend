@@ -25,8 +25,11 @@ function errorHandler(err, req, res, next) {
     message = 'Request body is too large.';
   }
 
-  if (status >= 500) console.error('[error]', err);
-  res.status(status).json({ error: status >= 500 && process.env.NODE_ENV === 'production' ? 'Internal server error' : message, ...(details && { details }) });
+  // Only hide messages of unexpected errors; deliberate HttpErrors (e.g. 503 "database
+  // unavailable") carry text written for the visitor.
+  const unexpected = !(err instanceof HttpError) && status >= 500;
+  if (unexpected) console.error('[error]', err);
+  res.status(status).json({ error: unexpected && process.env.NODE_ENV === 'production' ? 'Internal server error' : message, ...(details && { details }) });
 }
 
 module.exports = { notFound, errorHandler };
