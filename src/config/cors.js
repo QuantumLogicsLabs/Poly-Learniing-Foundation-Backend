@@ -19,8 +19,13 @@ function parseOrigins(value) {
   return list.length ? list : ['http://localhost:5173'];
 }
 
-const toPattern = (origin) =>
-  new RegExp('^' + origin.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*') + '$', 'i');
+// http:// and https:// are treated alike: Vercel serves every site over HTTPS, so an
+// "http://" entry is almost always a typo for the HTTPS origin browsers actually send.
+const toPattern = (origin) => {
+  const hostPart = origin.replace(/^https?:\/\//i, '');
+  const escaped = hostPart.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*');
+  return new RegExp(`^https?://${escaped}$`, 'i');
+};
 
 const allowedOrigins = parseOrigins(process.env.CLIENT_ORIGIN);
 const allowAll = allowedOrigins.includes('*');
